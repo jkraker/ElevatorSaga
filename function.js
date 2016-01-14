@@ -1,68 +1,78 @@
 function
 {
     init: function(elevators, floors) {
-        var elevator = elevators[0]; // Let's use the first elevator
-
-        // Whenever the elevator is idle (has no more queued destinations) ...
-        elevator.on("idle", function() {
-            elevator.goToFloor(0);
-        });
         
-        elevator.on("floor_button_pressed", function(floorNum) {
-            // add floors selected within elevator to the queue
-            elevator.goToFloor(floorNum);
-        });
+        var master_queue = []
         
-        elevator.on("passing_floor", function(floorNum, direction) {
-            if(direction == "up") {
-                // sort queued floors are in ascending order and make the
-                // next floor first in the queue
-                elevator.destinationQueue.sort();
-                while(elevator.destinationQueue[0] < floorNum) {
-                    var item = elevator.destinationQueue.shift();
-                    elevator.destinationQueue.push(item);
-                }
-                elevator.checkDestinationQueue();
-            } else if(direction == "down") {
-                // sort queued floors are in descending order and make the
-                // next floor first in the queue
-                elevator.destinationQueue.sort()
-                elevator.destinationQueue.reverse()
-                while(elevator.destinationQueue[0] > floorNum) {
-                    var item = elevator.destinationQueue.shift();
-                    elevator.destinationQueue.push(item);
-                }
-                elevator.checkDestinationQueue();
-            }
-        });
+        for(i = 0; i < elevators.length; i++){
+            init_elevator(elevators[i])
+        }
         
         for(i = 0; i < floors.length; i++) {
+            init_floor(floors[i]);
+        }
+        
+        function init_elevator(new_elevator) {
+            new_elevator.on("idle", function() {
+                if(master_queue.length == 0) return;
+                var destination = master_queue.shift()
+                new_elevator.goToFloor(destination);
+            });
+
+            new_elevator.on("floor_button_pressed", function(floorNum) {
+                // add floors selected within elevator to the queue
+                new_elevator.goToFloor(floorNum);
+            });
+
+            new_elevator.on("passing_floor", function(floorNum, direction) {
+                if(direction == "up") {
+                    // sort queued floors are in ascending order and make the
+                    // next floor first in the queue
+                    new_elevator.destinationQueue.sort();
+                    while(new_elevator.destinationQueue[0] < floorNum) {
+                        var item = new_elevator.destinationQueue.shift();
+                        new_elevator.destinationQueue.push(item);
+                    }
+                    new_elevator.checkDestinationQueue();
+                } else if(direction == "down") {
+                    // sort queued floors are in descending order and make the
+                    // next floor first in the queue
+                    new_elevator.destinationQueue.sort()
+                    new_elevator.destinationQueue.reverse()
+                    while(new_elevator.destinationQueue[0] > floorNum) {
+                        var item = new_elevator.destinationQueue.shift();
+                        new_elevator.destinationQueue.push(item);
+                    }
+                    new_elevator.checkDestinationQueue();
+                }
+            });
+
+            // haven't done anything here yet...
+            new_elevator.goingUpIndicator(true);
+            new_elevator.goingDownIndicator(true);
+        }
+        
+        function init_floor(new_floor) {
             // if up button is pressed on a floor and that floor is
             // not in queue, add to the queue
-            floors[i].on("up_button_pressed", function(floor) {
+            new_floor.on("up_button_pressed", function(floor) {
                 if(floor_exists_in_list(floor.floorNum(), elevator.destinationQueue) == false) {
-                    elevator.destinationQueue.push(floor.floorNum());
+                    master_queue.push(floor.floorNum());
                 }
             });
-        }
 
-        for(i = 0; i < floors.length; i++) {
             // if down button is pressed on a floor and that floor is
             // not in queue, add to the queue
-            floors[i].on("down_button_pressed", function(floor) {
+            new_floor.on("down_button_pressed", function(floor) {
                 if(floor_exists_in_list(floor.floorNum(), elevator.destinationQueue) == false) {
-                    elevator.destinationQueue.push(floor.floorNum());
+                    master_queue.push(floor.floorNum());
                 }
             });
         }
-        
-        // haven't done anything with these yet...
-        elevator.goingUpIndicator(true);
-        elevator.goingDownIndicator(true);
-        
+    
         function floor_exists_in_list(floor_number, list_of_floors) {
-            for(floor in list_of_floors) {
-                if(floor == floor_number) {
+            for(this_floor in list_of_floors) {
+                if(this_floor == floor_number) {
                     return true;
                 }
             }
